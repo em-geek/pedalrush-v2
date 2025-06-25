@@ -1,0 +1,121 @@
+[gd_scene load_steps=4 format=3 uid="uid://bnar0vtjimwrq"]
+
+[ext_resource type="PackedScene" uid="uid://cqpt28qddgcp3" path="res://scenes/bike.tscn" id="1_hpfmm"]
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_smp0h"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_uol7a"]
+size = Vector2(59, 433)
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_smp0h")
+
+[node name="UI" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TrackDisplay" type="ColorRect" parent="UI"]
+layout_mode = 0
+offset_right = 1147.0
+offset_bottom = 434.0
+
+[node name="Bikes" type="Node2D" parent="."]
+
+[node name="Bike1" parent="Bikes" instance=ExtResource("1_hpfmm")]
+position = Vector2(30, 31)
+scale = Vector2(0.5, 0.5)
+
+[node name="Bike2" parent="Bikes" instance=ExtResource("1_hpfmm")]
+position = Vector2(29, 144)
+scale = Vector2(0.5, 0.5)
+
+[node name="Bike3" parent="Bikes" instance=ExtResource("1_hpfmm")]
+position = Vector2(32, 277)
+scale = Vector2(0.5, 0.5)
+pedal_action = "boton_x"
+
+[node name="Bike4" parent="Bikes" instance=ExtResource("1_hpfmm")]
+position = Vector2(32, 403)
+scale = Vector2(0.5, 0.5)
+pedal_action = "boton_y"
+
+[node name="Area2D" type="Area2D" parent="Bikes"]
+position = Vector2(1041, 147)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Bikes/Area2D"]
+position = Vector2(103, 70)
+shape = SubResource("RectangleShape2D_uol7a")
+
+[node name="BottomPanel" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_top = 442.0
+offset_right = 1152.0
+offset_bottom = 645.0
+
+[node name="StatsPanel" type="HBoxContainer" parent="BottomPanel"]
+layout_mode = 0
+offset_right = 1155.0
+offset_bottom = 209.0
+
+[node name="CaloriasPanel" type="VBoxContainer" parent="BottomPanel/StatsPanel"]
+layout_mode = 2
+
+[node name="Calorias" type="Label" parent="BottomPanel/StatsPanel/CaloriasPanel"]
+layout_mode = 2
+text = "Calorias Quemadas:"
+
+[node name="Calorias1" type="Label" parent="BottomPanel/StatsPanel/CaloriasPanel"]
+layout_mode = 2
+
+[node name="Calorias2" type="Label" parent="BottomPanel/StatsPanel/CaloriasPanel"]
+layout_mode = 2
+
+[node name="Calorias3" type="Label" parent="BottomPanel/StatsPanel/CaloriasPanel"]
+layout_mode = 2
+
+[node name="Calorias4" type="Label" parent="BottomPanel/StatsPanel/CaloriasPanel"]
+layout_mode = 2
+
+[node name="PosicionPanel" type="VBoxContainer" parent="BottomPanel/StatsPanel"]
+layout_mode = 2
+
+[node name="Posicion" type="Label" parent="BottomPanel/StatsPanel/PosicionPanel"]
+layout_mode = 2
+text = "Posicion Recorrida:"
+
+[node name="Posicion1" type="Label" parent="BottomPanel/StatsPanel/PosicionPanel"]
+layout_mode = 2
+
+[node name="Posicion2" type="Label" parent="BottomPanel/StatsPanel/PosicionPanel"]
+layout_mode = 2
+
+[node name="Posicion3" type="Label" parent="BottomPanel/StatsPanel/PosicionPanel"]
+layout_mode = 2
+
+[node name="Posicion4" type="Label" parent="BottomPanel/StatsPanel/PosicionPanel"]
+layout_mode = 2
+
+[node name="DistanciaPanel" type="VBoxContainer" parent="BottomPanel/StatsPanel"]
+layout_mode = 2
+
+[node name="Distancia recorrida" type="Label" parent="BottomPanel/StatsPanel/DistanciaPanel"]
+layout_mode = 2
+text = "Distancia Recorrida:"
+
+[node name="Distancia1" type="Label" parent="BottomPanel/StatsPanel/DistanciaPanel"]
+layout_mode = 2
+
+[node name="Distancia2" type="Label" parent="BottomPanel/StatsPanel/DistanciaPanel"]
+layout_mode = 2
+
+[node name="Distancia3" type="Label" parent="BottomPanel/StatsPanel/DistanciaPanel"]
+layout_mode = 2
+
+[node name="Distancia4" type="Label" parent="BottomPanel/StatsPanel/DistanciaPanel"]
+layout_mode = 2
+
+[connection signal="area_entered" from="Bikes/Area2D" to="Bikes/Bike1" method="_on_area_2d_area_entered"]
