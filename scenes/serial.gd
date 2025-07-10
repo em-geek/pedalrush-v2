@@ -1,6 +1,6 @@
 extends Control
 
-const CONFIG_PATH := "res://config/dist/config.txt"
+const CONFIG_PATH := "user://config.txt"
 
 func _ready():
 	cargar_config()
