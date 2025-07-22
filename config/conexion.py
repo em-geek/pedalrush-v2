@@ -3,6 +3,23 @@ import json
 import re
 import os
 import sys
+from datetime import datetime
+
+# Configuración de rutas
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+JSON_PATH = os.path.join(SCRIPT_DIR, "datos_juego.json")
+
+# Inicialización de datos
+datos = {
+    "estado_carrera": "esperando",  # esperando, contando, en_progreso, terminada
+    "ganador": None,
+    "vueltas_totales": None,
+    "jugadores": {
+        "1": {"vuelta_actual": 0, "posicion": 0, "velocidad": 0.0, "distancia": 0.0},
+        "2": {"vuelta_actual": 0, "posicion": 0, "velocidad": 0.0, "distancia": 0.0}
+    },
+    "ultima_actualizacion": None
+}
 
 # Establecer la carpeta del ejecutable como directorio de trabajo
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -21,18 +38,12 @@ except serial.SerialException:
     print(f"[ERROR] No se pudo abrir el puerto {puerto}")
     exit(1)
 
-# Inicialización del JSON
-datos = {
-    "vueltas_totales": None,
-    "jugadores": {
-        "1": {"vuelta_actual": 0, "posicion": 0, "velocidad": 0.0, "distancia": 0.0},
-        "2": {"vuelta_actual": 0, "posicion": 0, "velocidad": 0.0, "distancia": 0.0}
-    }
-}
 
 def guardar_json():
-    with open("datos_juego.json", "w") as archivo:
+    datos["ultima_actualizacion"] = datetime.now().isoformat()
+    with open(JSON_PATH, "w") as archivo:
         json.dump(datos, archivo, indent=2)
+    print(f"[DEBUG] JSON actualizado a las {datos['ultima_actualizacion']}")
 
 try:
     while True:
@@ -83,3 +94,69 @@ try:
 except KeyboardInterrupt:
     arduino.close()
     print("[EXIT] Puerto cerrado. Script terminado.")
+
+
+def procesar_linea(linea):
+    linea = linea.strip()
+    
+    # Detección de vueltas seleccionadas
+    if linea.startswith("Vueltas seleccionadas:"):
+        match = re.search(r"Vueltas seleccionadas:\s*(\d+)", linea)
+        if match:
+            datos["vueltas_totales"] = int(match.group(1))
+            datos["estado_carrera"] = "esperando"
+            print(f"[INFO] Vueltas totales: {datos['vueltas_totales']}")
+            guardar_json()
+    
+    # Detección de posición (ej: p111,50)
+    elif linea.startswith("p") and "," in linea:
+        try:
+            header, posicion = linea.split(",")
+            jugador = header[1]
+            vuelta = header[3]
+            posicion = int(posicion)
+
+            if jugador in datos["jugadores"]:
+                datos["jugadores"][jugador]["vuelta_actual"] = int(vuelta)
+                datos["jugadores"][jugador]["posicion"] = posicion
+                
+                # Detectar inicio de carrera cuando alguien completa la primera vuelta
+                if int(vuelta) > 0 and datos["estado_carrera"] == "esperando":
+                    datos["estado_carrera"] = "en_progreso"
+                
+                # Detectar fin de carrera
+                if datos["vueltas_totales"] and int(vuelta) >= datos["vueltas_totales"]:
+                    datos["estado_carrera"] = "terminada"
+                    datos["ganador"] = jugador
+                
+                guardar_json()
+        except Exception as e:
+            print(f"[ERROR] Línea no válida: {linea} - {str(e)}")
+    
+    # Detección de velocidad (ej: s1,1.42)
+    elif linea.startswith("s") and "," in linea:
+        try:
+            jugador, velocidad = linea[1], float(linea.split(",")[1])
+            if jugador in datos["jugadores"]:
+                datos["jugadores"][jugador]["velocidad"] = velocidad
+                guardar_json()
+        except Exception as e:
+            print(f"[ERROR] Línea no válida: {linea} - {str(e)}")
+    
+    # Detección de distancia (ej: d1,320.5)
+    elif linea.startswith("d") and "," in linea:
+        try:
+            jugador, distancia = linea[1], float(linea.split(",")[1])
+            if jugador in datos["jugadores"]:
+                datos["jugadores"][jugador]["distancia"] = distancia
+                guardar_json()
+        except Exception as e:
+            print(f"[ERROR] Línea no válida: {linea} - {str(e)}")
+    
+    # Detección de ganador (w1 o w2)
+    elif linea.startswith("w"):
+        jugador = linea[1]
+        if jugador in datos["jugadores"]:
+            datos["estado_carrera"] = "terminada"
+            datos["ganador"] = jugador
+            guardar_json()

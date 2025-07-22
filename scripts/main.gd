@@ -1,5 +1,16 @@
 extends Node2D
 
+# Configuración
+var json_path := "res://config/dist/datos_juego.json"
+var json_check_timer := 0.0
+var json_check_interval := 0.1  # Revisar cada 100ms
+
+# Estados
+enum EstadoCarrera {ESPERANDO, CONTANDO, EN_PROGRESO, TERMINADA}
+var estado_carrera := EstadoCarrera.ESPERANDO
+var ganador := -1
+var vueltas_totales := 3
+
 @onready var bikes = [
 	$Bikes/Bike1,
 	$Bikes/Bike2,
@@ -32,49 +43,92 @@ var distancias = [0, 0, 0, 0]
 var calorias = [0, 0, 0, 0]
 var race_finished = false
 
-var json_path := "res://config/dist/datos_juego.json"  # donde se guarda el JSON
 var json_data: Dictionary = {}
+var carrera_iniciada := false
 
+func _process(delta):
+	json_check_timer += delta
+	if json_check_timer >= json_check_interval:
+		json_check_timer = 0.0
+		actualizar_datos_carrera()
+		
 
-func _process(_delta):
-	for i in range(bikes.size()):
-		# Usamos la distancia total acumulada
-		var distancia_actual = int(bikes[i].total_distance)
-		var calorias_actual = int(bikes[i].total_calories)
-
-		distancias[i] = distancia_actual
-		calorias[i] = calorias_actual
-
-		distancia_labels[i].text = "Bici %d: %d m" % [i + 1, distancia_actual]
-		calorias_labels[i].text = "Bici %d: %d cal" % [i + 1, calorias_actual]
-		posicion_labels[i].text = "Bici %d: %d/%d vueltas" % [i+1, int(bikes[i].total_distance/1150), bikes[i].LAPS_TO_WIN]
-
-	actualizar_posiciones()
-		# Cargar JSON si existe
+func actualizar_datos_carrera():
 	var file = FileAccess.open(json_path, FileAccess.READ)
-	if file:
-		var content = file.get_as_text()
-		var parsed = JSON.parse_string(content)
-		if parsed and typeof(parsed) == TYPE_DICTIONARY:
-			json_data = parsed.get("jugadores", {})
+	if not file:
+		return
+	
+	var content = file.get_as_text()
+	var parsed = JSON.parse_string(content)
+	
+	if not parsed or typeof(parsed) != TYPE_DICTIONARY:
+		return
+	
+	# Actualizar vueltas totales
+	if parsed.get("vueltas_totales", vueltas_totales) != vueltas_totales:
+		vueltas_totales = parsed["vueltas_totales"]
+		for bike in bikes:
+			bike.LAPS_TO_WIN = vueltas_totales
+	
+	# Actualizar estado de la carrera
+	match parsed.get("estado_carrera", "esperando"):
+		"esperando":
+			estado_carrera = EstadoCarrera.ESPERANDO
+		"contando":
+			estado_carrera = EstadoCarrera.CONTANDO
+		"en_progreso":
+			if estado_carrera != EstadoCarrera.EN_PROGRESO:
+				iniciar_carrera()
+			estado_carrera = EstadoCarrera.EN_PROGRESO
+		"terminada":
+			if estado_carrera != EstadoCarrera.TERMINADA:
+				finalizar_carrera(int(parsed.get("ganador", 1)))
+			estado_carrera = EstadoCarrera.TERMINADA
+	
+	# Actualizar datos de jugadores
+	if parsed.has("jugadores"):
+		var jugadores_data = parsed["jugadores"]
+		for i in range(bikes.size()):
+			var player_id = str(i+1)
+			if jugadores_data.has(player_id):
+				bikes[i].update_from_json(jugadores_data[player_id])
 
-			for i in range(bikes.size()):
-				bikes[i].update_from_json(json_data)
+func iniciar_carrera():
+	print("¡Carrera iniciada!")
+	$UI/MessageLabel.text = "¡Carrera iniciada!"
+	$UI/MessageLabel.visible = true
+	await get_tree().create_timer(2.0).timeout
+	$UI/MessageLabel.visible = false
 
-
-	if race_finished:
+func finalizar_carrera(ganador_id: int):
+	if ganador_id == ganador:  # Evitar múltiples finalizaciones
 		return
 
+	ganador = ganador_id
+
+	for i in range(bikes.size()):
+		bikes[i].finish(i + 1 == ganador_id)
+
+	$UI/MessageLabel.text = "¡Carrera terminada!\nGanador: Jugador %d" % ganador_id
+	$UI/MessageLabel.visible = true
 
 func _ready():
-	# Asignar controles a cada bicicleta
-	bikes[0].player_id = 1
-	bikes[1].player_id = 2
-	bikes[2].player_id = 3
-	bikes[3].player_id = 4
+	# Configuración inicial de bicicletas
+	for i in range(bikes.size()):
+		bikes[i].player_id = i + 1
+		bikes[i].connect("race_finished", _on_bike_race_finished)
 
-	for bike in bikes:
-		bike.connect("race_finished", _on_bike_race_finished)
+	# Iniciar temporizador para verificar JSON
+	set_process(true)
+
+func cargar_configuracion_inicial():
+	var config_path = "user://config.txt"
+	if FileAccess.file_exists(config_path):
+		var file = FileAccess.open(config_path, FileAccess.READ)
+		if file:
+			var content = file.get_as_text().strip_edges()
+			# Puedes añadir lógica para leer configuraciones adicionales si las necesitas
+
 
 # En el main.gd, modifica actualizar_posiciones() así:
 func actualizar_posiciones():

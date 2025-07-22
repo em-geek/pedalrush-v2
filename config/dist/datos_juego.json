@@ -1,13 +1,13 @@
 {
-  "vueltas_totales": 2,
-  "jugadores": {
-	"1": {
-	  "vuelta_actual": 0,
-	  "posicion": 0
-	},
-	"2": {
-	  "vuelta_actual": 2,
-	  "posicion": 89
+	"vueltas_totales": 2,
+	"jugadores": {
+		"1": {
+			"vuelta_actual": 0,
+			"posicion": 0
+		},
+		"2": {
+			"vuelta_actual": 2,
+			"posicion": 89
+		}
 	}
-  }
 }

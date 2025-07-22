@@ -1,15 +1,19 @@
 extends Node2D
 
+# Configuración
+@export var LAPS_TO_WIN := 3
+const TRACK_LENGTH = 1150
+const CALORIES_PER_UNIT: float = 0.1
+const SMOOTH_FACTOR := 8.0
+
+# Variables
+var total_distance: float = 0.0
+var total_calories: float = 0.0
+var finished = false
+var player_id := 1
+
 const MAX_SPEED = 1000  # Velocidad máxima estimada
 const DECELERATION = 10 # No se usa directamente ya que se estima la velocidad
-const TRACK_LENGTH = 1150
-const LAPS_TO_WIN = 3
-const MAX_DISTANCE = LAPS_TO_WIN * TRACK_LENGTH
-const CALORIES_PER_UNIT: float = 0.1
-const SMOOTH_FACTOR := 8.0  # Para suavizar el movimiento
-
-@export var pedal_action: String = "boton_a"
-@export var player_id := 1  # 1, 2, 3, 4
 
 signal race_finished(is_winner: bool)
 signal position_changed(new_position: Vector2)
@@ -17,30 +21,34 @@ signal position_changed(new_position: Vector2)
 var speed = 0.0
 var previous_distance = 0.0
 var display_distance = 0.0
-
 var laps = 0
-var total_distance: float = 0.0
-var total_calories: float = 0.0
-
-var finished = false
 
 func _ready():
 	$AnimatedSprite2D.play("idle")
 
 func update_from_json(data: Dictionary):
-	if finished or !data.has(str(player_id)):
+	if finished:
 		return
-	
-	var player_data = data[str(player_id)]
-	var nueva_pos = player_data.get("posicion", 0)
-	var nueva_vuelta = player_data.get("vuelta_actual", 0)
 
-	# Calcular la nueva distancia
-	total_distance = nueva_vuelta * TRACK_LENGTH + (nueva_pos / 100.0 * TRACK_LENGTH)
+	# Actualizar datos desde JSON
+	var nueva_pos = data.get("posicion", 0)
+	var nueva_vuelta = data.get("vuelta_actual", 0)
+	var nueva_velocidad = data.get("velocidad", 0.0)
+	var nueva_distancia = data.get("distancia", 0.0)
+
+	# Calcular distancia total
+	if nueva_distancia > 0:
+		total_distance = nueva_distancia
+	else:
+		total_distance = nueva_vuelta * TRACK_LENGTH + (nueva_pos / 100.0 * TRACK_LENGTH)
+
 	total_calories = total_distance * CALORIES_PER_UNIT
-	laps = nueva_vuelta
 
-	if laps >= LAPS_TO_WIN:
+	# Actualizar animación según velocidad
+	update_animation(nueva_velocidad)
+
+	# Verificar si ganó
+	if nueva_vuelta >= LAPS_TO_WIN and not finished:
 		finish(true)
 
 func _process(delta):
@@ -57,18 +65,16 @@ func _process(delta):
 	speed = distancia_diferencia / delta
 	previous_distance = display_distance
 
-	update_animation()
-
-func update_animation():
+func update_animation(speed: float):
 	var anim = $AnimatedSprite2D
 
-	if speed < 10:
+	if speed < 0.5:
 		anim.play("idle")
-	elif speed < 300:
+	elif speed < 2.0:
 		anim.play("pedal_slow")
-	elif speed < 600:
+	elif speed < 4.0:
 		anim.play("pedal_mid")
-	elif speed < 900:
+	elif speed < 6.0:
 		anim.play("pedal_fast")
 	else:
 		anim.play("pedal_fastest")
